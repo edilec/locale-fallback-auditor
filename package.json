@@ -1,17 +1,53 @@
 {
   "name": "locale-fallback-auditor",
-  "version": "0.0.0",
-  "description": "Check locale fallbacks and translated fields before a page is published.",
+  "version": "0.1.0",
+  "description": "Audit translation catalogs and locale fallback graphs: report keys a fallback silently satisfies, unresolved interpolation placeholders and fallback cycles.",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test"
+    "lint": "node --check src/index.mjs && node --check src/rules.mjs && node --check src/catalog.mjs && node --check src/graph.mjs && node --check src/audit.mjs && node --check bin/locale-fallback-auditor.mjs && node --check test/helpers.mjs && node --check test/rules.test.mjs && node --check test/catalog.test.mjs && node --check test/graph.test.mjs && node --check test/audit.test.mjs && node --check test/project.test.mjs && node --check test/confinement.test.mjs && node --check test/cli.test.mjs",
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/**",
+    "example": "node bin/locale-fallback-auditor.mjs --config examples/clean/locale-fallback.config.json",
+    "pack:check": "npm pack --dry-run",
+    "check": "npm run lint && npm test && npm run example && npm run pack:check"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/edilec/locale-fallback-auditor"
-  }
+    "url": "git+https://github.com/edilec/locale-fallback-auditor.git"
+  },
+  "bin": {
+    "locale-fallback-auditor": "./bin/locale-fallback-auditor.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "examples",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "i18n",
+    "l10n",
+    "locale",
+    "fallback",
+    "translation",
+    "interpolation",
+    "placeholder",
+    "audit",
+    "cli"
+  ],
+  "author": "Edilec Private Limited",
+  "bugs": {
+    "url": "https://github.com/edilec/locale-fallback-auditor/issues"
+  },
+  "homepage": "https://github.com/edilec/locale-fallback-auditor#readme"
 }
