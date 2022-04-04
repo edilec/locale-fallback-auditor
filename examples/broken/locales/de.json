@@ -1,0 +1,14 @@
+{
+  "product": {
+    "name": "Edilec Hauptbuch"
+  },
+  "legal": {
+    "retention": "Aufzeichnungen werden aufbewahrt.",
+    "version": 3
+  },
+  "checkout": {
+    "total": "Fällig: {amount} ({currency})",
+    "promo": "Diese Woche {percent} sparen.",
+    "legacy": "Nicht mehr verwendet"
+  }
+}
