@@ -22,12 +22,67 @@ import { byCodeUnit } from './rules.mjs'
  * `%s`, `$t(...)`, `<0>` and ICU plural or select bodies are out of scope and
  * are documented as such.
  */
-export const PLACEHOLDER_PATTERN = /\{([A-Za-z0-9_.-]+)\}/gu
+const SIMPLE_NAME = String.raw`[A-Za-z0-9_.-]+`
 
-/** The distinct placeholder names in a value, in code unit order. */
+export const PLACEHOLDER_PATTERN = new RegExp(`\\{(${SIMPLE_NAME})\\}`, 'gu')
+
+/** The same name shape, anchored at a position and closing immediately. */
+const SIMPLE_ARGUMENT_AT = new RegExp(`${SIMPLE_NAME}\\}`, 'yu')
+
+/**
+ * The header of an ICU complex argument: `{count, plural, ...}`, `select` or
+ * `selectordinal`.
+ *
+ * This is why the scan is not a regular expression over the whole value. An ICU
+ * branch body is ordinary text in braces -- `{He}`, `{items}`, `{th}` -- which
+ * is exactly the simple-argument shape, so a pattern that only looked for
+ * `{name}` would read every branch of a correctly translated `select` as a
+ * placeholder. The source and the translation then disagree about names that
+ * are not placeholders at all, and a correct translation is failed twice over,
+ * once as `placeholder-missing` and once as `placeholder-unexpected`.
+ *
+ * A complex argument is therefore skipped whole, branch bodies and nested
+ * arguments included: the docs say these forms are out of scope and report
+ * neither a missing nor an unexpected placeholder, and that is what this makes
+ * true.
+ */
+const ICU_COMPLEX_HEADER_AT = new RegExp(
+  `\\s*${SIMPLE_NAME}\\s*,\\s*(?:plural|select|selectordinal)\\s*,`,
+  'yu',
+)
+
+/**
+ * The distinct placeholder names in a value, in code unit order.
+ *
+ * One left-to-right pass with a brace depth counter, so a deeply nested value
+ * costs no stack and no rescanning.
+ */
 export function placeholdersIn(value) {
+  const text = String(value)
   const found = new Set()
-  for (const match of String(value).matchAll(PLACEHOLDER_PATTERN)) found.add(match[1])
+  let depth = 0
+  let skippingFrom = 0
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text.charAt(index)
+    if (character === '{') {
+      depth += 1
+      if (skippingFrom > 0) continue
+      ICU_COMPLEX_HEADER_AT.lastIndex = index + 1
+      if (ICU_COMPLEX_HEADER_AT.test(text)) {
+        skippingFrom = depth
+        continue
+      }
+      SIMPLE_ARGUMENT_AT.lastIndex = index + 1
+      const match = SIMPLE_ARGUMENT_AT.exec(text)
+      if (match !== null) found.add(match[0].slice(0, -1))
+      continue
+    }
+    if (character !== '}') continue
+    if (skippingFrom === depth) skippingFrom = 0
+    if (depth > 0) depth -= 1
+  }
+
   return [...found].sort(byCodeUnit)
 }
 

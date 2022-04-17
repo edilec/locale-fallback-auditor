@@ -150,6 +150,9 @@ missing, and every enforced limit.
   is the inner half of a `{{name}}` mustache. `%s`, `%1$s`, `$t(key)`,
   `<0>...</0>` and ICU `plural`, `select` and `selectordinal` bodies are not: a
   catalog using them reports neither a missing nor an unexpected placeholder.
+  An ICU complex argument is skipped whole, nested arguments in its branches
+  included, because a branch body like `{items}` is identifier shaped and
+  reading it as a placeholder would fail a correct translation.
   Only the *sets* of names are compared, never how many times one is repeated.
 - **It has no opinion about plurals, gender or context variants.** A catalog
   that stores those as an object under a key flattens into ordinary dotted keys,

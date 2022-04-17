@@ -396,6 +396,45 @@ test('accented translations survive the round trip unchanged', async (t) => {
   assert.equal(findingsFor(report, 'extra-key')[0].evidence, 'Registos são mantidos')
 })
 
+test('a correctly translated ICU select is not reported as a placeholder disagreement', async (t) => {
+  // README and docs/locale-fallback-rules.md both promise that ICU plural,
+  // select and selectordinal bodies report neither a missing nor an unexpected
+  // placeholder. The branch bodies below are identifier shaped, so this is the
+  // end to end form of that promise: a correct translation must pass.
+  const catalogs = healthyCatalogs()
+  catalogs.en.legal.notice = '{gender, select, male {He} female {She} other {They}} accepted on {date}'
+  catalogs.pt.legal.notice = '{gender, select, male {Ele} female {Ela} other {Elu}} aceitou em {date}'
+  catalogs['pt-BR'].legal.notice = '{gender, select, male {Ele} female {Ela} other {Elu}} aceitou em {date}'
+  catalogs.en.checkout.items = '{count, plural, one {# item} other {# items}}'
+  catalogs.pt.checkout.items = '{count, plural, one {# artigo} other {# artigos}}'
+  catalogs['pt-BR'].checkout.items = '{count, plural, one {# item} other {# itens}}'
+
+  const report = await run(t, regionalProject({ catalogs }))
+  assert.deepEqual(ruleIdsOf(report), [], 'an ICU branch body is not a placeholder')
+  assert.equal(report.status, 'pass')
+  assert.equal(exitCodeFor(report), 0)
+  assert.equal(report.summary.checked, 12)
+})
+
+test('a real placeholder inside an ICU-bearing value is still compared', async (t) => {
+  const catalogs = healthyCatalogs()
+  catalogs.en.legal.notice = '{gender, select, male {He} other {They}} accepted on {date}'
+  catalogs.pt.legal.notice = '{gender, select, male {Ele} other {Elu}} aceitou'
+  catalogs['pt-BR'].legal.notice = '{gender, select, male {Ele} other {Elu}} aceitou em {date} por {agente}'
+
+  const report = await run(t, regionalProject({ catalogs }))
+  const missing = findingsFor(report, 'placeholder-missing')
+  assert.equal(missing.length, 1)
+  assert.equal(missing[0].location.file, 'locales/pt.json')
+  assert.match(missing[0].message, /\{date\}/u)
+  assert.equal(missing[0].message.includes('{He}'), false, 'a branch body is never named as a placeholder')
+  const unexpected = findingsFor(report, 'placeholder-unexpected')
+  assert.equal(unexpected.length, 1)
+  assert.match(unexpected[0].message, /\{agente\}/u)
+  assert.equal(report.status, 'fail')
+  assert.equal(exitCodeFor(report), 1)
+})
+
 test('two runs over the same inputs produce byte identical stdout', async (t) => {
   const made = await project(t, regionalProject({ catalogs: healthyCatalogs(), config: { requiredKeyPrefixes: [] } }))
   const first = renderReport(await checkProject({ config: made.config }))

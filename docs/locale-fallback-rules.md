@@ -128,7 +128,11 @@ a `{{name}}` mustache, so both are recognised.
 Nothing else is. `%s` and `%1$s`, `$t(key)`, `<0>...</0>`, and ICU `plural`,
 `select` and `selectordinal` bodies are out of scope: their arguments are not
 extracted, and a catalog that uses them will report neither a missing nor an
-unexpected placeholder. The comparison is between the *sets* of names in the
+unexpected placeholder. A complex argument is skipped whole -- its header, its
+branch bodies, and any simple argument nested inside a branch -- because a
+branch body such as `{He}` or `{items}` has exactly the simple-argument shape.
+Reading those as placeholders would fail a correct `select` translation twice,
+once for dropping the source branches and once for inventing its own. The comparison is between the *sets* of names in the
 source value and in the translation. How many times a name is repeated is not
 compared.
 

@@ -91,6 +91,39 @@ test('placeholders are the distinct names in code unit order', () => {
   assert.deepEqual(placeholdersIn('{ spaced }'), [], 'only the documented shape is recognised')
   assert.deepEqual(placeholdersIn('unterminated {name'), [])
   assert.deepEqual(placeholdersIn('%s and %1$s'), [], 'printf style is a documented non-goal')
+  assert.deepEqual(placeholdersIn('$t(legal.terms)'), [], '$t(key) is a documented non-goal')
+  assert.deepEqual(placeholdersIn('<0>bold</0>'), [], 'tag markup is a documented non-goal')
+})
+
+test('an ICU plural, select or selectordinal body yields no placeholder at all', () => {
+  // Each branch body below is identifier shaped -- {He}, {items}, {th} -- and a
+  // scan that only looked for {name} would read every one of them as a
+  // placeholder, so a correct translation of a select would be failed twice:
+  // once for "dropping" the source branches and once for "inventing" its own.
+  assert.deepEqual(placeholdersIn('{gender, select, male {He} female {She} other {They}}'), [])
+  assert.deepEqual(placeholdersIn('{count, plural, one {item} other {items}}'), [])
+  assert.deepEqual(placeholdersIn('{n, selectordinal, one {st} two {nd} other {th}}'), [])
+  assert.deepEqual(placeholdersIn('{count,plural,one{item}other{items}}'), [], 'no whitespace is still ICU')
+  assert.deepEqual(placeholdersIn('{ count , plural , one {item} other {items} }'), [], 'padded is still ICU')
+  assert.deepEqual(placeholdersIn('{count, plural, one {# item} other {# items}}'), [])
+  assert.deepEqual(placeholdersIn('{outer, select, other {{inner} text}}'), [], 'a nested argument is skipped with its branch')
+
+  // The complex argument is skipped, and nothing around it is.
+  assert.deepEqual(
+    placeholdersIn('{n, plural, one {message} other {messages}} for {user} in {inbox}'),
+    ['inbox', 'user'],
+  )
+  assert.deepEqual(placeholdersIn('{a}{b, plural, one {x} other {y}}{c}'), ['a', 'c'])
+  assert.deepEqual(placeholdersIn('{gender, select, male {He} other {They}'), [], 'an unterminated select is not mined for branches')
+  assert.deepEqual(placeholdersIn('{amount, number, ::.00}'), [], 'a formatted argument is not a simple argument')
+})
+
+test('the placeholder scan is linear, not a nesting-depth recursion', () => {
+  // A value is bounded by maxCatalogBytes, not by how deeply it nests braces,
+  // so the scan must not put one frame on the stack per brace.
+  const nested = '{'.repeat(200000) + 'name}' + '}'.repeat(199999)
+  assert.deepEqual(placeholdersIn(nested), ['name'])
+  assert.deepEqual(placeholdersIn('{'.repeat(200000)), [])
 })
 
 test('a blank value is not a translation', () => {
