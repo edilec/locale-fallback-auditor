@@ -10,11 +10,20 @@ finding takes its severity from that table. A finding built with an unknown rule
 id throws. The table in this document is asserted against the code in both
 directions by `test/rules.test.mjs`.
 
-That cross-check alone is not the defence, because editing this file and the
-code together satisfies it. `test/rules.test.mjs` therefore carries a third,
-hand-written copy of the catalog and asserts the status and exit code each rule
-produces on its own, and `test/audit.test.mjs` carries one fixture per rule and
-asserts the verdict that fixture reaches. A downgrade has to get past all three.
+That cross-check alone is not the defence, and neither is the third,
+hand-written copy of the catalog in `test/rules.test.mjs`: three declarations
+edited together still agree with each other, and the rule that used to fail a
+build quietly stops doing so.
+
+What pins a severity is what it does. `test/severity.test.mjs` carries one
+isolating fixture per rule -- a real project, driven through the real entry
+point and through the real CLI -- and asserts the findings, the status and the
+process exit code as literals. Downgrading `placeholder-missing` to a warning
+turns that fixture from `fail` and exit 1 into `pass` and exit 0, and dropping
+`catalog-too-large` from the evidence-missing set turns another from
+`incomplete` and exit 2 into `fail` and exit 1. No edit of the table, this
+document and the hand-written copy can hide either, because the observable
+outcome of a run is what moved.
 
 - any `error` finding, and no missing evidence, means **fail** and exit 1
 - `warning` and `info` findings alone mean **pass** and exit 0
