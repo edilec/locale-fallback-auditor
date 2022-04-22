@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
+import { execFile } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import test from 'node:test'
+import { promisify } from 'node:util'
 
 import { CONFIG_NAME, BIN, catalogJson, configJson, healthyCatalogs, makeProject, regionalProject, removeProject, runCli } from './helpers.mjs'
 
@@ -159,6 +161,33 @@ test('a translation key holding a newline cannot forge a line in the human summa
   assert.equal(lines.length, report.findings.length + 2)
   assert.equal(lines.filter((line) => line.trimStart().startsWith('ERROR')).length, 0)
   assert.equal(report.summary.errors, 0)
+})
+
+test('a named pipe at a declared catalog path cannot hang the CLI', async (t) => {
+  // The volume test below shows the CLI returns on a big project. This shows it
+  // returns on a file that never answers: opening a FIFO blocks until a writer
+  // arrives, and nothing in this tool would ever time that out. The run must
+  // come back on its own with the catalog reported as not a regular file.
+  const files = regionalProject({ catalogs: healthyCatalogs() })
+  delete files['locales/pt.json']
+  const root = await makeProject(files)
+  t.after(() => removeProject(root))
+
+  try {
+    await promisify(execFile)('mkfifo', [join(root, 'locales', 'pt.json')])
+  } catch {
+    t.skip('mkfifo is not available here, so a FIFO cannot be planted')
+    return
+  }
+
+  const run = await runCli(['--config', join(root, CONFIG_NAME), '--json'], { timeout: 15000 })
+  assert.equal(run.killed, false, 'the CLI had to be killed: it blocked on the pipe')
+  assert.equal(run.code, 2)
+  const report = JSON.parse(run.stdout)
+  assert.equal(report.status, 'incomplete')
+  const unreadable = report.findings.filter((finding) => finding.ruleId === 'catalog-unreadable')
+  assert.equal(unreadable.length, 1)
+  assert.match(unreadable[0].message, /not a regular file/u)
 })
 
 test('the CLI returns rather than hanging on a large project', async (t) => {

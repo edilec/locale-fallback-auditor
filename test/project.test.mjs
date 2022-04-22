@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import test from 'node:test'
 
@@ -122,6 +122,31 @@ test('a value the auditor cannot compare is only a warning and still cannot pass
     'the only thing keeping this off a pass is catalog-value-not-string being evidence-missing',
   )
   assert.equal(exitCodeFor(report), 2)
+})
+
+test('a catalog path that is not a regular file is refused before it is opened', async (t) => {
+  // The stat guard is the only thing between this tool and an unbounded wait.
+  // A directory answers EISDIR, but a FIFO planted at a declared catalog path
+  // answers nothing at all, and readFile would block until someone writes to
+  // it. Reporting the file type is what keeps that from being possible, so the
+  // reason has to be the file type and not whatever errno a read returned.
+  const files = regionalProject({ catalogs: healthyCatalogs() })
+  delete files['locales/pt.json']
+  const made = await project(t, files)
+  await mkdir(join(made.root, 'locales', 'pt.json'), { recursive: true })
+
+  const report = await checkProject({ config: made.config })
+  const finding = findingsFor(report, 'catalog-unreadable')[0]
+  assert.equal(findingsFor(report, 'catalog-unreadable').length, 1)
+  assert.equal(finding.location.file, 'locales/pt.json')
+  assert.equal(
+    finding.message.includes('(not a regular file)'),
+    true,
+    `the file type is the reason, not an errno from a read: ${finding.message}`,
+  )
+  assert.equal(report.status, 'incomplete')
+  assert.equal(exitCodeFor(report), 2)
+  assert.equal(report.summary.audited, 2)
 })
 
 test('a catalog that is not UTF-8 is reported, not decoded lossily', async (t) => {
