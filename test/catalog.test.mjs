@@ -64,14 +64,26 @@ test('non-string values are separated from translations rather than coerced', ()
   assert.deepEqual([...flat.values.keys()], ['ok'])
 })
 
-test('a catalog key named like an object member cannot reach a prototype', () => {
+test('a catalog key named like an object member is data, not a member', () => {
   const document = JSON.parse('{"__proto__": {"polluted": "yes"}, "constructor": "c", "toString": "t"}')
   const flat = flattenCatalog(document, LIMITS)
+  assert.equal(flat.values instanceof Map, true, 'never a plain object')
   assert.equal(flat.values.get('constructor'), 'c')
   assert.equal(flat.values.get('toString'), 't')
-  assert.equal({}.polluted, undefined)
-  assert.equal(Object.prototype.polluted, undefined)
-  assert.equal(flat.values instanceof Map, true)
+  assert.equal(flat.values.get('__proto__.polluted'), 'yes', 'the nested key flattens to ordinary readable data')
+  assert.equal(flat.values.size, 3)
+
+  // Asserting ({}).polluted is undefined here would prove nothing: the
+  // flattener builds '__proto__.polluted' as one ordinary string, so even a
+  // deliberately unsafe plain-object store would write a normal own property
+  // and never touch a shared prototype. What a plain-object store would do is
+  // lose the key, because assigning to __proto__ calls a setter instead of
+  // writing a property, so that is what is asserted.
+  const direct = flattenCatalog(JSON.parse('{"__proto__": "own value", "legal": {"terms": "Accept."}}'), LIMITS)
+  assert.equal(direct.values.get('__proto__'), 'own value', 'a key literally named __proto__ is kept as written')
+  assert.deepEqual([...direct.values.keys()].sort(), ['__proto__', 'legal.terms'])
+  assert.equal(usableKeys(direct.values).includes('__proto__'), true, 'and it is audited like any other key')
+  assert.equal(Object.getPrototypeOf(direct.values), Map.prototype)
 })
 
 test('a deep document does not overflow the call stack before the limit is reached', () => {
