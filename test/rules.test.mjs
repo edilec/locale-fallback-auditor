@@ -209,6 +209,67 @@ test('sanitize replaces control and format characters and bounds the length', ()
   assert.equal(sanitize('k'.repeat(IDENTIFIER_LIMIT)), 'k'.repeat(IDENTIFIER_LIMIT))
 })
 
+/**
+ * The characters that must never reach output, by class.
+ *
+ * C0 and the two separators are the obvious half. The C1 range is the half that
+ * gets missed: U+0085 is NEL, a line break to a terminal, and U+009B is the
+ * 8-bit CSI, the introducer of an ANSI escape sequence. The bidi controls are
+ * worse than invisible -- U+202E reverses the text that follows it, so a key
+ * can display as something other than what it is.
+ */
+const CONTROL_CLASSES = {
+  'C0 U+0000-U+001F': [0x0000, 0x0001, 0x0008, 0x0009, 0x000a, 0x000d, 0x001b, 0x001f],
+  'DEL U+007F': [0x007f],
+  'C1 U+0080-U+009F': [0x0080, 0x0085, 0x008d, 0x009b, 0x009f],
+  'line and paragraph': [0x2028, 0x2029],
+  'bidi': [0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069],
+  'other format': [0x00ad, 0x061c, 0xfeff],
+}
+
+const EVERY_CONTROL = Object.values(CONTROL_CLASSES).flat()
+
+test('every control and format class is replaced, in identifiers as well as excerpts', () => {
+  for (const [name, points] of Object.entries(CONTROL_CLASSES)) {
+    for (const point of points) {
+      const character = String.fromCodePoint(point)
+      const label = `${name} U+${point.toString(16).padStart(4, '0')}`
+      assert.equal(stripControls(`a${character}b`), 'a b', label)
+      assert.equal(sanitize(`a${character}b`), 'a b', label)
+      assert.equal(excerpt(`a${character}b`), 'a b', label)
+      assert.equal(pointerSegment(`a${character}b`), 'a b', label)
+
+      // The same character arriving through an identifier rather than through
+      // an excerpt: a rule id is rejected outright, and a key, a file and a
+      // pointer are stripped on the way into the finding.
+      assert.throws(() => severityFor(`missing${character}key`), /Unknown ruleId/u, label)
+      const finding = makeFinding(
+        'missing-key',
+        `Key "a${character}b" is missing`,
+        at(`locales/a${character}b.json`, `/locales/0/keys/a${character}b`),
+        { evidence: `value${character}here`, suggestion: `fix${character}it` },
+      )
+      for (const field of [finding.message, finding.location.file, finding.location.pointer, finding.evidence, finding.suggestion]) {
+        assert.equal(field.includes(character), false, `${label} survived in ${field}`)
+      }
+    }
+  }
+})
+
+test('a rule id carrying a control character is named safely when it is refused', () => {
+  // The refusal quotes the id it refused, so the refusal itself must be safe.
+  const forged = `missing-key${String.fromCodePoint(0x0085)}ERROR forged`
+  try {
+    severityFor(forged)
+    assert.fail('an unknown rule id must throw')
+  } catch (thrown) {
+    assert.match(thrown.message, /Unknown ruleId/u)
+    for (const point of EVERY_CONTROL) {
+      assert.equal(thrown.message.includes(String.fromCodePoint(point)), false, point.toString(16))
+    }
+  }
+})
+
 test('stripControls keeps the text but removes what could forge a line', () => {
   assert.equal(stripControls('one\ntwo'), 'one two')
   assert.equal(stripControls('  keeps   spacing  '), '  keeps   spacing  ')

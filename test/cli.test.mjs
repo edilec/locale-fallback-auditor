@@ -51,6 +51,26 @@ test('an unknown option carrying a newline cannot forge a line of output', async
   assert.equal(run.stderr.startsWith('Unknown option "--bad Usage: forged"'), true)
 })
 
+test('an unknown option carrying any control character cannot forge output', async () => {
+  // U+0085 is a line break to a terminal, U+009B introduces an escape sequence
+  // and U+202E reverses the text after it. The refusal quotes the option it
+  // refused, so each has to be gone before it is quoted.
+  const points = [0x000a, 0x0085, 0x009b, 0x2028, 0x202e, 0x2069]
+  for (const point of points) {
+    const character = String.fromCodePoint(point)
+    const run = await runCli([`--bad${character}Usage: forged`], { timeout: 20000 })
+    const label = `U+${point.toString(16).padStart(4, '0')}`
+    assert.equal(run.code, 2, label)
+    assert.equal(run.stdout, '', label)
+    // The usage text that follows is full of real newlines, so the refusal
+    // itself is the line to look at: it must be one line and the whole of it.
+    const [refusal, blank] = run.stderr.split('\n')
+    assert.equal(refusal, 'Unknown option "--bad Usage: forged"', label)
+    assert.equal(blank, '', label)
+    if (point !== 0x000a) assert.equal(run.stderr.includes(character), false, `${label} reached stderr`)
+  }
+})
+
 test('the clean example passes, and stdout is a report and nothing else', async () => {
   const run = await runCli(['--config', CLEAN], { timeout: 20000 })
   assert.equal(run.code, 0)

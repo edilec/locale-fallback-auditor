@@ -156,7 +156,15 @@ compared.
 - Read-only. Nothing is written, and there is no auto-fix.
 - Catalog content is data. A translation value never changes what the tool does,
   and every untrusted string is sanitised and bounded before it reaches the
-  report or the human summary.
+  report or the human summary -- an identifier such as a key, a file name or a
+  JSON Pointer segment exactly as much as an excerpt.
+- Sanitising means every control and format character is replaced with a space:
+  C0 (U+0000-U+001F), DEL (U+007F), C1 (U+0080-U+009F, which includes NEL at
+  U+0085 and the 8-bit CSI at U+009B), the line and paragraph separators
+  (U+2028, U+2029), and the bidi controls (U+200E, U+200F, U+202A-U+202E,
+  U+2066-U+2069) along with the other format characters. A class that stopped
+  at C0 would still let a key forge a line in a terminal, and a bidi override
+  would still reverse the text a reader sees.
 
 ## What the exit codes mean
 

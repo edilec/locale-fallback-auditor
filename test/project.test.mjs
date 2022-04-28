@@ -14,6 +14,7 @@ import {
   TOOL_ID,
   checkProject,
   exitCodeFor,
+  formatSummary,
   renderReport,
   validateConfig,
 } from '../src/index.mjs'
@@ -373,6 +374,34 @@ test('untrusted keys are sanitised and escaped everywhere they reach the report'
   }
   const escaped = extras.find((finding) => finding.location.pointer.includes('~1'))
   assert.equal(escaped.location.pointer, '/locales/1/keys/a~1b~0c')
+})
+
+test('no control or format character reaches the report through a key or a value', async (t) => {
+  // The character arrives through an identifier -- a catalog key, which is what
+  // the pointer and the message are built from -- as well as through the value,
+  // which is what the evidence is built from. U+0085 and U+009B forge a line
+  // and an escape sequence in a terminal, and U+202E reverses what follows it.
+  const points = [0x0000, 0x001b, 0x007f, 0x0085, 0x009b, 0x2028, 0x2029, 0x200f, 0x202e, 0x2069]
+  const catalogs = healthyCatalogs()
+  for (const point of points) {
+    const character = String.fromCodePoint(point)
+    catalogs.pt[`key${character}${point.toString(16)}`] = `value${character}here`
+  }
+
+  const report = await run(t, regionalProject({ catalogs }))
+  assert.equal(findingsFor(report, 'extra-key').length, points.length, 'each forged key is reported once')
+
+  const rendered = renderReport(report)
+  const summary = formatSummary(report)
+  for (const point of points) {
+    const character = String.fromCodePoint(point)
+    const label = `U+${point.toString(16).padStart(4, '0')}`
+    assert.equal(rendered.includes(character), false, `${label} reached stdout`)
+    assert.equal(summary.includes(character), false, `${label} reached the human summary`)
+  }
+  // One line per finding plus the two summary lines: nothing forged a line.
+  assert.equal(summary.split('\n').filter((line) => line !== '').length, report.findings.length + 2)
+  assert.equal(JSON.parse(rendered).status, report.status)
 })
 
 test('a separator in a catalog key never reaches stdout raw', async (t) => {
