@@ -176,14 +176,44 @@ pass. The defaults are in the docs.
 
 ## Guarantees and the tests that defend them
 
-Every claim above has a test that fails when the code behind it is removed. The
-severity table is asserted against the documentation in both directions and
-against a third hand-written copy in `test/rules.test.mjs`. The set of rules that
-mean *evidence was missing* is asserted rule by rule, including the two that are
-only `warning`s and whose membership in that set is the sole reason they cannot
-produce a pass. Path confinement is tested from both sides: a symlink escaping
-the root must be refused, and a file genuinely inside a root that is itself
-reached through a symlink must not be.
+Each guarantee above is pinned by what a run does, not by what the source says
+about itself. Declarations that agree with each other are not a defence: three
+copies of a severity table can be edited together and still agree, and a source
+grep for a comparator passes the moment the comparator is spelled differently.
+
+- **Severity and exit codes.** `test/severity.test.mjs` carries one isolating
+  fixture per rule -- a real project, run through the library and through the
+  CLI -- and asserts the findings, the status and the process exit code as
+  literals. Downgrading a rule turns one of those runs from fail and exit 1 into
+  pass and exit 0; dropping one from the evidence-missing set turns another from
+  incomplete and exit 2 into fail and exit 1. The severity table is still the
+  single source of truth, and is still cross-checked against
+  [`docs/locale-fallback-rules.md`](./docs/locale-fallback-rules.md) in both
+  directions and against a hand-written copy in `test/rules.test.mjs`.
+- **Ordering.** `test/ordering.test.mjs` drives keys, file names, placeholder
+  lists and locale ids that code unit order and collation genuinely disagree
+  about -- `Z` before `a`, `a-b` before `a_b`, `README` before `assets` -- and
+  asserts the exact emitted order. Substituting an `Intl.Collator` for the
+  comparator at any of the sites that can change a report makes one of them
+  fail. Three constant lists and the rule id tiebreak are the exception, and are
+  named in that file: no collator reorders them, so they are compared against
+  the default `Array.prototype.sort` instead, which is code unit order by
+  definition.
+- **Unread evidence is never a pass.** Status is computed from the findings, so
+  there is no flag to delete. A catalog that is missing, too large, undecodable,
+  unparsable, over a limit, or not a regular file is reported `incomplete` and
+  exits 2, and a named pipe planted at a catalog path is refused by file type
+  rather than blocking the run.
+- **Sanitisation.** Every control and format class is asserted one code point at
+  a time, and through an identifier -- a key, a file name, a pointer segment --
+  as well as through an excerpt.
+- **Confinement.** Tested from both sides: a symlink escaping the root must be
+  refused, and a file genuinely inside a root that is itself reached through a
+  symlink must not be.
+
+Each of these was checked by mutating the code it defends and watching the suite
+fail. Where a mutation cannot change any output the tool can produce, the test
+file says so rather than claiming a defence it does not have.
 
 ```sh
 npm run check      # lint, test, run the clean example, and pack

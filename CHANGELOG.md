@@ -25,12 +25,23 @@ All notable changes to this project are recorded here. The format follows
   affected keys as undetermined instead of claiming they are missing.
 - A frozen `ruleId -> severity` catalog of 26 rules, asserted against
   `docs/locale-fallback-rules.md` in both directions and against a third
-  hand-written copy in `test/rules.test.mjs`.
+  hand-written copy in `test/rules.test.mjs`, and pinned by what each rule does:
+  `test/severity.test.mjs` runs one isolating fixture per rule through the
+  library and the CLI and asserts the findings, the status and the exit code.
 - Five configurable limits and two fixed bounds, each enforced and each
   reporting a named finding or a configuration error rather than truncating.
 - `locale-fallback-auditor` CLI with `--config`, `--root`, `--require-prefix`,
   `--json` and `--help`, emitting the v1 report envelope on stdout.
 - Clean and deliberately broken example projects under `examples/`.
+
+### Fixed
+
+- ICU `plural`, `select` and `selectordinal` arguments are read as out of scope,
+  as the documentation always said they were. An ICU branch body is identifier
+  shaped -- `{He}`, `{items}` -- so the `{name}` pattern matched every branch,
+  and a correctly translated `select` reported both a missing and an unexpected
+  placeholder and failed the run. A complex argument is now recognised by its
+  header and skipped whole; a simple argument outside one is still compared.
 
 ### Notes
 
