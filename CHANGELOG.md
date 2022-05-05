@@ -42,6 +42,16 @@ All notable changes to this project are recorded here. The format follows
   and a correctly translated `select` reported both a missing and an unexpected
   placeholder and failed the run. A complex argument is now recognised by its
   header and skipped whole; a simple argument outside one is still compared.
+- A parse failure no longer quotes the document it failed on. V8 writes
+  `Unexpected token 'A', "AKIAIOSFODNN7EXAMPLE" is not valid JSON`, and both
+  parse sites interpolated it: `catalog-unparsable` put it in the report on
+  stdout and the config loader put it on stderr, so a catalog or a config short
+  enough to be nothing but a credential was reproduced in full. `sanitize` never
+  helped, since it cuts from the end and the quoted span is at the front. Both
+  diagnostics now carry the position, line, column and offending token and never
+  the text at them, and `test/parse-failure-redaction.test.mjs` drives the AWS
+  documentation placeholder through the real binary and asserts it absent from
+  stdout, from stderr and from every prefix down to eight characters.
 
 ### Notes
 

@@ -29,6 +29,7 @@ import {
   excerpt,
   makeFinding,
   marksEvidenceMissing,
+  parseFailureDetail,
   pointerSegment,
   sanitize,
   severityFor,
@@ -60,6 +61,7 @@ export {
   excerpt,
   makeFinding,
   marksEvidenceMissing,
+  parseFailureDetail,
   pointerSegment,
   sanitize,
   severityFor,
@@ -362,7 +364,7 @@ async function loadCatalogs(config, root, realRoot, findings) {
     try {
       document = JSON.parse(read.text)
     } catch (error) {
-      findings.push(makeFinding('catalog-unparsable', `${label} is not valid JSON: ${sanitize(error.message)}.`, at(file, pointer), {
+      findings.push(makeFinding('catalog-unparsable', `${label} is not valid JSON: ${sanitize(parseFailureDetail(error))}.`, at(file, pointer), {
         suggestion: 'Correct the JSON syntax.',
       }))
       continue
@@ -471,7 +473,7 @@ export async function checkProject({ config, root, requirePrefixes }) {
   try {
     document = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text)
   } catch (error) {
-    throw new ConfigError(`The config is not valid JSON: ${sanitize(error.message)}`)
+    throw new ConfigError(`The config is not valid JSON: ${sanitize(parseFailureDetail(error))}`)
   }
 
   const validated = validateConfig(document, { requirePrefixes })

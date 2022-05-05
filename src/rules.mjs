@@ -110,6 +110,33 @@ export function excerpt(text) {
 }
 
 /**
+ * What a JSON parse failure may be told about itself, with the input removed.
+ *
+ * V8 reports a parse failure two ways, and one of them quotes the document
+ * back: `Unexpected token 'A', "AKIAIOSFODNN7EXAMPLE" is not valid JSON`. A
+ * catalog or a config short enough to be nothing but a credential is therefore
+ * reproduced in full by its own error message, on exactly the path a malformed
+ * or untrusted file takes. `sanitize` cannot help: it replaces control
+ * characters and cuts from the end, and the quoted span sits at the front.
+ *
+ * Position, line and column are the useful half and carry no file content, so
+ * they are kept verbatim; so is the offending token, one character wide and
+ * bounded here to stay that way. V8 has a third spelling for a failure further
+ * into the file, `..."legal.terms": AKIAIOSFOD"...`, which quotes a window
+ * rather than a prefix and carries no position at all; that one keeps only the
+ * token. The quoted half never leaves this function.
+ */
+export function parseFailureDetail(error) {
+  const message = String(error?.message ?? 'could not be parsed')
+  const position = /at position \d+(?: \(line \d+ column \d+\))?/.exec(message)
+  if (position) return message.slice(0, position.index + position[0].length)
+  const token = /^Unexpected token (.{1,8}?), (\.\.\.)?".*?"(?:\.\.\.)? is not valid JSON$/su.exec(message)
+  if (token) return token[2] === undefined ? `unexpected token ${token[1]} at the start of the document` : `unexpected token ${token[1]}`
+  if (/^Unexpected end of JSON input$/u.test(message)) return message
+  return 'the document could not be parsed as JSON'
+}
+
+/**
  * One JSON Pointer segment. Sanitised first, then escaped per RFC 6901, so a
  * key containing a slash cannot forge pointer structure.
  */

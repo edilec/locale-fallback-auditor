@@ -46,7 +46,7 @@ that for every warning-severity rule in the list.
 | `catalog-key-limit-exceeded` | error | yes | A catalog holds more keys than `maxKeysPerCatalog`. None of them were audited. |
 | `catalog-not-utf8` | error | yes | A catalog file could not be decoded as UTF-8. |
 | `catalog-too-large` | error | yes | A catalog file is larger than `maxCatalogBytes`. |
-| `catalog-unparsable` | error | yes | A catalog file is not valid JSON, or is not a JSON object at the top level. |
+| `catalog-unparsable` | error | yes | A catalog file is not valid JSON, or is not a JSON object at the top level. The finding carries the position, line and column of the parse failure and never the text at it: V8 quotes the input back in its own parse message, so a catalog short enough to be nothing but a credential would otherwise be reproduced in full by its own error. |
 | `catalog-unreadable` | error | yes | A catalog file could not be read. |
 | `catalog-value-not-string` | warning | yes | A catalog holds a number, boolean, null or array where a translation belongs. The auditor compares strings, so that key was not audited. |
 | `duplicate-flattened-key` | error | yes | Two source paths in one catalog flatten to the same key, so which value a loader serves is unknown. The first was kept. |
