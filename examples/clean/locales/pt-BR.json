@@ -1,0 +1,12 @@
+{
+  "product": {
+    "name": "Livro-Razão Edilec"
+  },
+  "legal": {
+    "terms": "Ao continuar, você aceita os Termos de Serviço.",
+    "retention": "Os registros são mantidos por {years} anos."
+  },
+  "checkout": {
+    "total": "Total a pagar: {amount}"
+  }
+}

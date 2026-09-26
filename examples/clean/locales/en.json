@@ -1,0 +1,13 @@
+{
+  "product": {
+    "name": "Edilec Ledger"
+  },
+  "legal": {
+    "terms": "By continuing you accept the Terms of Service.",
+    "retention": "Records are kept for {years} years."
+  },
+  "checkout": {
+    "total": "Total due: {amount}",
+    "promo": "Save {percent} this week."
+  }
+}
