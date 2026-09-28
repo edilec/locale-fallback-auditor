@@ -28,8 +28,10 @@ Node 22 or newer. No runtime dependencies, no dev dependencies, Node built-ins
 only.
 
 ```sh
-npm install locale-fallback-auditor
+npm install github:edilec/locale-fallback-auditor
 ```
+
+This installs the public GitHub source; `locale-fallback-auditor` is not published to npm.
 
 ## Use
 
