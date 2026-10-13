@@ -4,7 +4,7 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project uses
 [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-10-14
 
 ### Added
 
@@ -55,5 +55,5 @@ All notable changes to this project are recorded here. The format follows
 
 ### Notes
 
-- `0.1.0` is the version recorded in `package.json`. No release has been
-  published.
+- `0.1.0` is the version recorded in `package.json` and the GitHub source
+  release dated 2026-10-14.
